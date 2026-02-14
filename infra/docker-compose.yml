@@ -9,3 +9,40 @@ services:
     command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://geo3:geo3@postgres:5432/geo3
+      ARTIFACT_BUCKET: artifacts
+      ARTIFACT_ENDPOINT_URL: http://minio:9000
+      ARTIFACT_REGION: us-east-1
+      ARTIFACT_ACCESS_KEY: minio
+      ARTIFACT_SECRET_KEY: minio123
+      ARTIFACT_USE_SSL: "false"
+      JWT_SECRET: change-me-change-me-change-me-change-me
+    depends_on:
+      - postgres
+      - minio
+  postgres:
+    image: postgis/postgis:15-3.4
+    environment:
+      POSTGRES_DB: geo3
+      POSTGRES_USER: geo3
+      POSTGRES_PASSWORD: geo3
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  minio:
+    image: minio/minio:RELEASE.2024-01-18T22-51-28Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+volumes:
+  postgres_data:
+  minio_data:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import logging
+
 from app.geoip.cache import GeoIPCache
 
 
@@ -16,6 +18,7 @@ class GeoIPService:
         self._cache = cache
         self._reader = reader
         self._db_session = db_session
+        self._logger = logging.getLogger(__name__)
 
     def lookup(self, ip: str) -> dict[str, object] | None:
         cached = self._cache.get(ip)
@@ -64,14 +67,16 @@ class GeoIPService:
             return
         try:
             from app.db.models.ip_geo_cache import IpGeoCache
-        except Exception:
-            return
+        except Exception as exc:
+            self._logger.exception("GeoIP cache DB model unavailable", exc_info=exc)
+            raise
         try:
             record = IpGeoCache(ip_address=ip, raw=data)
             add(record)
             commit()
-        except Exception:
-            return
+        except Exception as exc:
+            self._logger.exception("GeoIP cache DB write failed", exc_info=exc)
+            raise
 
     def _normalize(self, response: Any) -> dict[str, object]:
         if isinstance(response, dict):

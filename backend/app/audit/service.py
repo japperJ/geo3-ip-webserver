@@ -1,7 +1,9 @@
 import csv
 import io
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from threading import Lock
 
 from app.db.models.audit import AccessDecision
 
@@ -17,11 +19,14 @@ class AuditEvent:
     artifact_path: str | None
 
 
-_EVENTS: list[AuditEvent] = []
+MAX_EVENTS = 1000
+_EVENTS: deque[AuditEvent] = deque(maxlen=MAX_EVENTS)
+_LOCK = Lock()
 
 
 def clear() -> None:
-    _EVENTS.clear()
+    with _LOCK:
+        _EVENTS.clear()
 
 
 def log_block(
@@ -41,11 +46,14 @@ def log_block(
         reason=reason,
         artifact_path=artifact_path,
     )
-    _EVENTS.append(event)
+    with _LOCK:
+        _EVENTS.append(event)
     return event
 
 
 def export_csv() -> str:
+    with _LOCK:
+        events = list(_EVENTS)
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(
@@ -59,7 +67,7 @@ def export_csv() -> str:
             "artifact_path",
         ]
     )
-    for event in _EVENTS:
+    for event in events:
         writer.writerow(
             [
                 event.timestamp.isoformat(),

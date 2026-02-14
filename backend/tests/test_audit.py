@@ -46,3 +46,22 @@ def test_audit_export_endpoint_returns_csv():
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/csv")
     assert "site-123" in resp.text
+
+
+def test_audit_retention_is_bounded():
+    audit_service.clear()
+
+    for idx in range(audit_service.MAX_EVENTS + 5):
+        audit_service.log_block(
+            site_id=f"site-{idx}",
+            client_ip="203.0.113.5",
+            ip_geo_country="US",
+            reason="blocked",
+            artifact_path=None,
+        )
+
+    csv_data = audit_service.export_csv()
+    lines = csv_data.strip().splitlines()
+
+    assert len(lines) == audit_service.MAX_EVENTS + 1
+    assert "site-0" not in csv_data

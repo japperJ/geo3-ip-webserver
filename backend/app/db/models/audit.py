@@ -24,6 +24,8 @@ class AccessAudit(Base):
     )
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     client_ip: Mapped[str | None] = mapped_column(String(50))
+    ip_geo_lat: Mapped[float | None] = mapped_column(nullable=True)
+    ip_geo_lng: Mapped[float | None] = mapped_column(nullable=True)
     ip_geo_country: Mapped[str | None] = mapped_column(String(10))
     client_gps: Mapped[object | None] = mapped_column(Geometry("POINT", srid=4326))
     decision: Mapped[AccessDecision | None] = mapped_column(

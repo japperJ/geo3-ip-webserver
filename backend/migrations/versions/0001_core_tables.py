@@ -15,6 +15,8 @@ def upgrade() -> None:
         "users",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, nullable=False),
         sa.Column("email", sa.String(length=255), nullable=False),
+        sa.Column("password_hash", sa.String(length=255), nullable=False, server_default=""),
+        sa.Column("role", sa.String(length=50), nullable=False, server_default="user"),
         sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("now()")),
     )
     op.create_index("ix_users_email", "users", ["email"], unique=True)
@@ -95,6 +97,8 @@ def upgrade() -> None:
         sa.Column("site_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("timestamp", sa.DateTime(), nullable=False, server_default=sa.text("now()")),
         sa.Column("client_ip", sa.String(length=50)),
+        sa.Column("ip_geo_lat", sa.Float()),
+        sa.Column("ip_geo_lng", sa.Float()),
         sa.Column("ip_geo_country", sa.String(length=10)),
         sa.Column("client_gps", Geometry("POINT", srid=4326)),
         sa.Column("decision", sa.String(length=20)),

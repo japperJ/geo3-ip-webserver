@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     jwt_exp_minutes: int = 60
+    geoip_db_path: str = "./GeoLite2-City.mmdb"
+    geoip_cache_ttl_seconds: int = 3600
 
     @field_validator("jwt_algorithm")
     @classmethod

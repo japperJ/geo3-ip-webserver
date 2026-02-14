@@ -32,5 +32,5 @@ def capture_artifact(
     storage: S3CompatibleStorage,
 ) -> str:
     local_path = capture_callable() if capture_callable is not None else "placeholder"
-    key = f"{site_id}/artifact"
+    key = "placeholder" if capture_callable is None else f"{site_id}/artifact"
     return storage.put_path(key=key, local_path=local_path)

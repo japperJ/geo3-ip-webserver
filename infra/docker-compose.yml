@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   api:
-    image: python:3.13-slim
+    image: python:3.11-slim
     working_dir: /app
     volumes:
       - ../backend:/app

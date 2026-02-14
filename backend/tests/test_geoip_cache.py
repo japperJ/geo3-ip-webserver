@@ -49,6 +49,38 @@ def test_geoip_service_missing_reader_raises():
         service.lookup("1.2.3.4")
 
 
+def test_geoip_service_db_cache_hit_populates_memory_cache():
+    class DummySession:
+        def query(self, ip: str):
+            assert ip == "1.2.3.4"
+            return {"country_code": "US"}
+
+    cache = GeoIPCache(ttl_seconds=60)
+    service = GeoIPService(cache=cache, reader=None, db_session=DummySession())
+
+    assert service.lookup("1.2.3.4") == {"country_code": "US"}
+    assert cache.get("1.2.3.4") == {"country_code": "US"}
+
+
+def test_geoip_service_db_write_failure_does_not_break_lookup():
+    class DummySession:
+        def add(self, record) -> None:
+            raise RuntimeError("db down")
+
+        def commit(self) -> None:
+            raise RuntimeError("db down")
+
+    class DummyReader:
+        def city(self, ip: str):
+            assert ip == "1.2.3.4"
+            return {"country_code": "US"}
+
+    cache = GeoIPCache(ttl_seconds=60)
+    service = GeoIPService(cache=cache, reader=DummyReader(), db_session=DummySession())
+
+    assert service.lookup("1.2.3.4") == {"country_code": "US"}
+
+
 def test_settings_rejects_non_positive_geoip_ttl(monkeypatch):
     monkeypatch.setenv("JWT_SECRET", "x" * 32)
     settings_module = importlib.import_module("app.settings")

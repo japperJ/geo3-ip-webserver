@@ -68,15 +68,21 @@ class GeoIPService:
         try:
             from app.db.models.ip_geo_cache import IpGeoCache
         except Exception as exc:
-            self._logger.exception("GeoIP cache DB model unavailable", exc_info=exc)
-            raise
+            self._logger.exception(
+                "GeoIP cache DB model unavailable; continuing without persistence",
+                exc_info=exc,
+            )
+            return
         try:
             record = IpGeoCache(ip_address=ip, raw=data)
             add(record)
             commit()
         except Exception as exc:
-            self._logger.exception("GeoIP cache DB write failed", exc_info=exc)
-            raise
+            self._logger.exception(
+                "GeoIP cache DB write failed; continuing without persistence",
+                exc_info=exc,
+            )
+            return
 
     def _normalize(self, response: Any) -> dict[str, object]:
         if isinstance(response, dict):

@@ -10,10 +10,14 @@ from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.artifacts import worker as artifact_worker
+from app.artifacts.storage import S3CompatibleStorage
 from app.access.decision import decide_access
 from app.access.ip_rules import evaluate_ip_rules
+from app.audit import service as audit_service
 from app.db.models.audit import AccessDecision
 from app.db.models.site import SiteFilterMode
+from app.settings import settings
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
 
@@ -21,6 +25,7 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / 
 @dataclass
 class SiteAccessConfig:
     filter_mode: SiteFilterMode
+    site_id: str
     ip_rules: list[Mapping[str, object]] = field(default_factory=list)
     geo_allowed: bool | None = None
 
@@ -90,6 +95,8 @@ class AccessGateMiddleware(BaseHTTPMiddleware):
             geo_allowed=geo_allowed,
         )
         if decision == AccessDecision.BLOCKED:
+            artifact_path = await _capture_block_artifact(request, config)
+            _log_block_event(request, config, artifact_path)
             return templates.TemplateResponse(
                 request,
                 "block.html",
@@ -140,3 +147,53 @@ async def _evaluate_geo_allowed(
     if isinstance(result, Mapping):
         return bool(result)
     return True
+
+
+async def _capture_block_artifact(
+    request: Request,
+    config: SiteAccessConfig,
+) -> str | None:
+    capture_service = getattr(request.app.state, "capture_service", None)
+    capture_callable = None
+    capture_method = getattr(capture_service, "capture", None)
+    if capture_method is not None:
+        def _capture():
+            return capture_method(config.site_id)
+
+        capture_callable = _capture
+    storage = getattr(request.app.state, "artifact_storage", None)
+    if storage is None:
+        storage = S3CompatibleStorage(
+            bucket=settings.artifact_bucket,
+            endpoint_url=settings.artifact_endpoint_url,
+            region_name=settings.artifact_region,
+            access_key=settings.artifact_access_key,
+            secret_key=settings.artifact_secret_key,
+            use_ssl=settings.artifact_use_ssl,
+        )
+    try:
+        return await artifact_worker.capture_artifact(
+            site_id=config.site_id,
+            capture_callable=capture_callable,
+            storage=storage,
+        )
+    except Exception:
+        return None
+
+
+def _log_block_event(
+    request: Request,
+    config: SiteAccessConfig,
+    artifact_path: str | None,
+) -> None:
+    service = getattr(request.app.state, "audit_service", audit_service)
+    try:
+        service.log_block(
+            site_id=str(config.site_id),
+            client_ip=request.client.host if request.client else None,
+            ip_geo_country=None,
+            reason="blocked",
+            artifact_path=artifact_path,
+        )
+    except Exception:
+        return None

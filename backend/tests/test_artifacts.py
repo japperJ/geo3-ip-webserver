@@ -1,7 +1,7 @@
+import asyncio
 import uuid
 
 from app.artifacts import worker
-from app.artifacts.storage import S3CompatibleStorage
 
 
 def test_record_artifact_metadata_stores_minimal_fields():
@@ -25,6 +25,7 @@ def test_record_artifact_metadata_stores_minimal_fields():
         db_session=db_session,
     )
 
+    assert record is not None
     assert record.site_id == site_id
     assert record.path == "s3://bucket/path.png"
     assert db_session.added == [record]
@@ -41,13 +42,57 @@ def test_record_artifact_metadata_returns_none_without_session():
     assert record is None
 
 
-def test_capture_artifact_returns_placeholder_path():
-    storage = S3CompatibleStorage(bucket="artifacts")
+def test_capture_artifact_invokes_capture_callable():
+    class DummyStorage(worker.S3CompatibleStorage):
+        def __init__(self) -> None:
+            super().__init__(bucket="bucket")
+            self.calls = []
 
-    path = worker.capture_artifact(
-        site_id=uuid.uuid4(),
-        capture_callable=None,
-        storage=storage,
+        def put_path(self, *, key: str, local_path: str) -> str:
+            self.calls.append((key, local_path))
+            return f"s3://bucket/{key}"
+
+    called = {"value": False}
+
+    def capture() -> str:
+        called["value"] = True
+        return "local.png"
+
+    storage = DummyStorage()
+    site_id = uuid.uuid4()
+
+    path = asyncio.run(
+        worker.capture_artifact(
+            site_id=site_id,
+            capture_callable=capture,
+            storage=storage,
+        )
     )
 
-    assert path == "s3://artifacts/placeholder"
+    assert called["value"] is True
+    assert storage.calls == [(f"{site_id}/artifact", "local.png")]
+    assert path == f"s3://bucket/{site_id}/artifact"
+
+
+def test_capture_artifact_returns_placeholder_path():
+    class DummyStorage(worker.S3CompatibleStorage):
+        def __init__(self) -> None:
+            super().__init__(bucket="bucket")
+            self.calls = []
+
+        def put_path(self, *, key: str, local_path: str) -> str:
+            self.calls.append((key, local_path))
+            return f"s3://bucket/{key}"
+
+    storage = DummyStorage()
+
+    path = asyncio.run(
+        worker.capture_artifact(
+            site_id=uuid.uuid4(),
+            capture_callable=None,
+            storage=storage,
+        )
+    )
+
+    assert storage.calls == [("placeholder", "placeholder")]
+    assert path == "s3://bucket/placeholder"

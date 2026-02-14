@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import inspect
 import uuid
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from app.artifacts.storage import S3CompatibleStorage
 from app.db.models.artifact import Artifact
@@ -25,12 +26,17 @@ def record_artifact_metadata(
     return record
 
 
-def capture_artifact(
+async def capture_artifact(
     *,
-    site_id: uuid.UUID,
-    capture_callable: Callable[[], str] | None,
+    site_id: str | uuid.UUID,
+    capture_callable: Callable[[], str] | Callable[[], Awaitable[str]] | None,
     storage: S3CompatibleStorage,
 ) -> str:
-    local_path = capture_callable() if capture_callable is not None else "placeholder"
+    local_path = "placeholder"
+    if capture_callable is not None:
+        result = capture_callable()
+        if inspect.isawaitable(result):
+            result = await result
+        local_path = result
     key = "placeholder" if capture_callable is None else f"{site_id}/artifact"
     return storage.put_path(key=key, local_path=local_path)

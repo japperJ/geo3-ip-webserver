@@ -14,7 +14,6 @@ def evaluate_ip_rules(
 
     matched_action: IPRuleAction | None = None
     matched_prefix = -1
-    matched_deny = False
 
     for rule in rules:
         cidr = str(rule["cidr"])
@@ -23,12 +22,7 @@ def evaluate_ip_rules(
         if ip in network:
             if not isinstance(action, IPRuleAction):
                 action = IPRuleAction(str(action))
-            if action == IPRuleAction.DENY:
-                if network.prefixlen > matched_prefix or not matched_deny:
-                    matched_action = action
-                    matched_prefix = network.prefixlen
-                    matched_deny = True
-            elif not matched_deny and network.prefixlen > matched_prefix:
+            if network.prefixlen > matched_prefix:
                 matched_action = action
                 matched_prefix = network.prefixlen
 

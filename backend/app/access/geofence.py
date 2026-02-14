@@ -22,12 +22,21 @@ def _point_in_polygon(point: tuple[float, float], polygon: list[tuple[float, flo
     x, y = point
     inside = False
     n = len(polygon)
+    if n >= 2 and polygon[0] == polygon[-1]:
+        polygon = polygon[:-1]
+        n -= 1
     if n < 3:
         return False
     j = n - 1
     for i in range(n):
         xi, yi = polygon[i]
         xj, yj = polygon[j]
+        dx = xj - xi
+        dy = yj - yi
+        cross = (x - xi) * dy - (y - yi) * dx
+        if cross == 0.0:
+            if min(xi, xj) <= x <= max(xi, xj) and min(yi, yj) <= y <= max(yi, yj):
+                return True
         intersects = (yi > y) != (yj > y)
         if intersects:
             x_at_y = (xj - xi) * (y - yi) / (yj - yi + 0.0) + xi

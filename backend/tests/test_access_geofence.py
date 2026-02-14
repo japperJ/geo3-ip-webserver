@@ -28,6 +28,23 @@ def test_within_geofence_polygon_miss():
     )
 
 
+def test_within_geofence_polygon_edge_treated_inside():
+    polygon = [
+        (-1.0, -1.0),
+        (1.0, -1.0),
+        (1.0, 1.0),
+        (-1.0, 1.0),
+        (-1.0, -1.0),
+    ]
+
+    assert within_geofence(
+        point=(1.0, 0.0),
+        polygon=polygon,
+        center=None,
+        radius_meters=None,
+    )
+
+
 def test_within_geofence_radius_match():
     assert within_geofence(
         point=(0.0, 0.009),

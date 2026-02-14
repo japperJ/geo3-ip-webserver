@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.admin_store import get_admin_store
 from app.auth.admin_deps import require_admin
 from app.db.models.site_user import SiteUserRole
+from app.db.session import get_db
 
 router = APIRouter(prefix="/api/admin/sites/{site_id}/users", tags=["admin-site-users"])
 
@@ -20,6 +22,7 @@ def add_site_user(
     site_id: str,
     payload: SiteUserCreate,
     request: Request,
+    db: Session = Depends(get_db),
     user=Depends(require_admin),
 ) -> dict:
     store = get_admin_store(request.app)
@@ -41,6 +44,7 @@ def remove_site_user(
     site_id: str,
     user_id: str,
     request: Request,
+    db: Session = Depends(get_db),
     user=Depends(require_admin),
 ) -> Response:
     store = get_admin_store(request.app)

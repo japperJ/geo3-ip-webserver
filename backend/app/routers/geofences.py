@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.admin_store import get_admin_store
 from app.auth.admin_deps import require_admin
+from app.db.session import get_db
 
 router = APIRouter(prefix="/api/admin/sites/{site_id}/geofences", tags=["admin-geofences"])
 
@@ -21,6 +23,7 @@ def create_geofence(
     site_id: str,
     payload: GeofenceCreate,
     request: Request,
+    db: Session = Depends(get_db),
     user=Depends(require_admin),
 ) -> dict:
     store = get_admin_store(request.app)
@@ -39,7 +42,12 @@ def create_geofence(
 
 
 @router.get("")
-def list_geofences(site_id: str, request: Request, user=Depends(require_admin)) -> list[dict]:
+def list_geofences(
+    site_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(require_admin),
+) -> list[dict]:
     store = get_admin_store(request.app)
     if site_id not in store.sites:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.admin_store import get_admin_store
 from app.auth.admin_deps import require_admin
 from app.db.models.site import SiteFilterMode
+from app.db.session import get_db
 
 router = APIRouter(prefix="/api/admin/sites", tags=["admin-sites"])
 
@@ -27,6 +29,7 @@ class SiteUpdate(BaseModel):
 def create_site(
     payload: SiteCreate,
     request: Request,
+    db: Session = Depends(get_db),
     user=Depends(require_admin),
 ) -> dict:
     store = get_admin_store(request.app)
@@ -43,7 +46,11 @@ def create_site(
 
 
 @router.get("")
-def list_sites(request: Request, user=Depends(require_admin)) -> list[dict]:
+def list_sites(
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(require_admin),
+) -> list[dict]:
     store = get_admin_store(request.app)
     return list(store.sites.values())
 
@@ -53,6 +60,7 @@ def update_site(
     site_id: str,
     payload: SiteUpdate,
     request: Request,
+    db: Session = Depends(get_db),
     user=Depends(require_admin),
 ) -> dict:
     store = get_admin_store(request.app)
@@ -69,7 +77,12 @@ def update_site(
 
 
 @router.delete("/{site_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_site(site_id: str, request: Request, user=Depends(require_admin)) -> Response:
+def delete_site(
+    site_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(require_admin),
+) -> Response:
     store = get_admin_store(request.app)
     store.sites.pop(site_id, None)
     store.geofences.pop(site_id, None)

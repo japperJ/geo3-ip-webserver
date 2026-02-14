@@ -1,11 +1,24 @@
-from pydantic import BaseModel
+from pydantic import Field, ValidationError, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseModel):
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="", extra="ignore")
+
     app_name: str = "geo3-ip-webserver"
-    jwt_secret: str = "dev-secret"
+    jwt_secret: str = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     jwt_exp_minutes: int = 60
 
+    @field_validator("jwt_algorithm")
+    @classmethod
+    def validate_jwt_algorithm(cls, value: str) -> str:
+        if value != "HS256":
+            raise ValueError("jwt_algorithm must be HS256")
+        return value
 
-settings = Settings()
+
+try:
+    settings = Settings()
+except ValidationError as exc:
+    raise RuntimeError("Invalid application settings") from exc

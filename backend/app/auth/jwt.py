@@ -36,6 +36,13 @@ def decode_jwt(token: str) -> dict | None:
     except ValueError:
         return None
 
+    try:
+        header = json.loads(_b64url_decode(header_b64).decode("utf-8"))
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if header.get("alg") != settings.jwt_algorithm:
+        return None
+
     signing_input = f"{header_b64}.{payload_b64}".encode("ascii")
     expected = hmac.new(
         settings.jwt_secret.encode("utf-8"),

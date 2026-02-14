@@ -9,6 +9,7 @@ dependencies = [
   "SQLAlchemy>=2.0.25",
   "alembic>=1.13.0",
   "geoalchemy2>=0.15.2",
+  "pydantic-settings>=2.2.1",
 ]
 
 [tool.setuptools]

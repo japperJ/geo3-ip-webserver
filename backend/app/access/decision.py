@@ -20,7 +20,12 @@ def decide_access(
 
 
 def _decision_from_ip(ip_action: object | None) -> AccessDecision:
-    if str(ip_action) == "allow":
+    if ip_action is None:
+        return AccessDecision.BLOCKED
+    action_value = getattr(ip_action, "value", None)
+    if action_value is None:
+        action_value = str(ip_action)
+    if str(action_value).lower() == "allow":
         return AccessDecision.ALLOWED
     return AccessDecision.BLOCKED
 
@@ -29,7 +34,10 @@ def _decision_from_ip_and_geo(
     ip_action: object | None,
     geo_allowed: bool | None,
 ) -> AccessDecision:
-    if str(ip_action) != "allow":
+    action_value = getattr(ip_action, "value", None)
+    if action_value is None:
+        action_value = str(ip_action)
+    if str(action_value).lower() != "allow":
         return AccessDecision.BLOCKED
     if geo_allowed:
         return AccessDecision.ALLOWED

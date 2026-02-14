@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from collections.abc import Awaitable
+import inspect
 from pathlib import Path
 from typing import Iterable, Mapping
 
-from fastapi import Request
+from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -23,15 +25,34 @@ class SiteAccessConfig:
     geo_allowed: bool | None = None
 
 
-_SITE_CONFIGS: dict[str, SiteAccessConfig] = {}
+class SiteConfigRegistry:
+    def __init__(self) -> None:
+        self._configs: dict[str, SiteAccessConfig] = {}
+
+    def get(self, hostname: str) -> SiteAccessConfig | None:
+        return self._configs.get(hostname)
+
+    def set(self, hostname: str, config: SiteAccessConfig) -> None:
+        self._configs[hostname.lower()] = config
+
+    def clear(self) -> None:
+        self._configs.clear()
 
 
-def register_site_config(hostname: str, config: SiteAccessConfig) -> None:
-    _SITE_CONFIGS[hostname.lower()] = config
+def _get_site_registry(app: FastAPI) -> SiteConfigRegistry:
+    registry = getattr(app.state, "site_access_registry", None)
+    if registry is None:
+        registry = SiteConfigRegistry()
+        app.state.site_access_registry = registry
+    return registry
 
 
-def clear_site_configs() -> None:
-    _SITE_CONFIGS.clear()
+def register_site_config(app: FastAPI, hostname: str, config: SiteAccessConfig) -> None:
+    _get_site_registry(app).set(hostname, config)
+
+
+def clear_site_configs(app: FastAPI) -> None:
+    _get_site_registry(app).clear()
 
 
 def _normalize_hostname(host: str | None) -> str | None:
@@ -50,12 +71,19 @@ class AccessGateMiddleware(BaseHTTPMiddleware):
         if not host:
             return await call_next(request)
 
-        config = _SITE_CONFIGS.get(host)
+        config = _get_site_registry(request.app).get(host)
         if config is None:
             return await call_next(request)
 
         ip_action = _evaluate_ip_action(request, config.ip_rules)
-        geo_allowed = _evaluate_geo_allowed(request, config.geo_allowed, self._geoip_service)
+        geoip_service = self._geoip_service
+        if geoip_service is None:
+            geoip_service = getattr(request.app.state, "geoip_service", None)
+        geo_allowed = await _evaluate_geo_allowed(
+            request,
+            config.geo_allowed,
+            geoip_service,
+        )
         decision = decide_access(
             filter_mode=config.filter_mode,
             ip_action=ip_action,
@@ -78,10 +106,13 @@ def _evaluate_ip_action(request: Request, rules: Iterable[Mapping[str, object]])
     client_ip = request.client.host if request.client else ""
     if not client_ip:
         return None
-    return evaluate_ip_rules(client_ip, rules)
+    try:
+        return evaluate_ip_rules(client_ip, rules)
+    except Exception:
+        return None
 
 
-def _evaluate_geo_allowed(
+async def _evaluate_geo_allowed(
     request: Request,
     geo_allowed: bool | None,
     geoip_service: object | None,
@@ -96,5 +127,16 @@ def _evaluate_geo_allowed(
     lookup = getattr(geoip_service, "lookup", None)
     if lookup is None:
         return None
-    _ = lookup(client_ip)
-    return None
+    try:
+        result = lookup(client_ip)
+        if isinstance(result, Awaitable) or inspect.isawaitable(result):
+            result = await result
+    except Exception:
+        return None
+    if result is None:
+        return None
+    if isinstance(result, bool):
+        return result
+    if isinstance(result, Mapping):
+        return bool(result)
+    return True

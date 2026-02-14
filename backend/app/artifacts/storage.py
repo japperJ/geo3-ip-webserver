@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from typing import Any
 
 
@@ -13,7 +14,9 @@ class S3CompatibleStorage:
     secret_key: str | None = None
     use_ssl: bool = True
 
-    def put_path(self, *, key: str, local_path: str) -> str:
+    def put_path(self, *, key: str, local_path: str) -> str | None:
+        if not local_path or not os.path.exists(local_path):
+            return None
         client = _create_boto3_client(
             endpoint_url=self.endpoint_url,
             region_name=self.region_name,

@@ -70,7 +70,7 @@ def test_blocked_request_returns_403_and_records_artifact():
             "client_ip": "10.1.2.3",
             "ip_geo_country": None,
             "reason": "blocked",
-            "artifact_path": f"s3://artifacts/{site_id}/artifact",
+            "artifact_path": f"s3://bucket/{site_id}/artifact",
         }
     ]
 

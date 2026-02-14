@@ -74,7 +74,7 @@ def test_capture_artifact_invokes_capture_callable():
     assert path == f"s3://bucket/{site_id}/artifact"
 
 
-def test_capture_artifact_returns_placeholder_path():
+def test_capture_artifact_returns_none_without_capture():
     class DummyStorage(worker.S3CompatibleStorage):
         def __init__(self) -> None:
             super().__init__(bucket="bucket")
@@ -94,5 +94,31 @@ def test_capture_artifact_returns_placeholder_path():
         )
     )
 
-    assert storage.calls == [("placeholder", "placeholder")]
-    assert path == "s3://bucket/placeholder"
+    assert storage.calls == []
+    assert path is None
+
+
+def test_capture_artifact_returns_remote_path_without_upload():
+    class DummyStorage(worker.S3CompatibleStorage):
+        def __init__(self) -> None:
+            super().__init__(bucket="bucket")
+            self.calls = []
+
+        def put_path(self, *, key: str, local_path: str) -> str:
+            self.calls.append((key, local_path))
+            return f"s3://bucket/{key}"
+
+    def capture() -> str:
+        return "s3://bucket/remote"
+
+    storage = DummyStorage()
+    path = asyncio.run(
+        worker.capture_artifact(
+            site_id=uuid.uuid4(),
+            capture_callable=capture,
+            storage=storage,
+        )
+    )
+
+    assert storage.calls == []
+    assert path == "s3://bucket/remote"

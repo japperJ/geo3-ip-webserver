@@ -31,12 +31,15 @@ async def capture_artifact(
     site_id: str | uuid.UUID,
     capture_callable: Callable[[], str] | Callable[[], Awaitable[str]] | None,
     storage: S3CompatibleStorage,
-) -> str:
-    local_path = "placeholder"
-    if capture_callable is not None:
-        result = capture_callable()
-        if inspect.isawaitable(result):
-            result = await result
-        local_path = result
-    key = "placeholder" if capture_callable is None else f"{site_id}/artifact"
-    return storage.put_path(key=key, local_path=local_path)
+) -> str | None:
+    if capture_callable is None:
+        return None
+    result = capture_callable()
+    if inspect.isawaitable(result):
+        result = await result
+    if not result:
+        return None
+    if isinstance(result, str) and result.startswith("s3://"):
+        return result
+    key = f"{site_id}/artifact"
+    return storage.put_path(key=key, local_path=str(result))

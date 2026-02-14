@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Access blocked</title>
+    <style>
+      body {
+        font-family: "Georgia", "Times New Roman", serif;
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #f4f1ea, #e9e1d3);
+        color: #2b2b2b;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .card {
+        background: #ffffff;
+        border: 1px solid #e2d8c7;
+        box-shadow: 0 10px 25px rgba(40, 32, 20, 0.12);
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 520px;
+        width: calc(100% - 48px);
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 12px 0;
+        letter-spacing: 0.5px;
+      }
+      p {
+        margin: 0 0 16px 0;
+        line-height: 1.5;
+      }
+      .host {
+        font-weight: bold;
+      }
+      .note {
+        font-size: 14px;
+        color: #6d6454;
+        margin-top: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Access blocked</h1>
+      <p>This site is restricted based on the access policy.</p>
+      {% if hostname %}
+      <p>
+        Requested host: <span class="host">{{ hostname }}</span>
+      </p>
+      {% endif %}
+      <p class="note">If you believe this is an error, contact the site administrator.</p>
+    </div>
+  </body>
+</html>

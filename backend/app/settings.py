@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     artifact_access_key: str | None = None
     artifact_secret_key: str | None = None
     artifact_use_ssl: bool = True
+    database_url: str = "postgresql+psycopg://geo3:geo3@localhost:5432/geo3"
 
     @field_validator("jwt_algorithm")
     @classmethod

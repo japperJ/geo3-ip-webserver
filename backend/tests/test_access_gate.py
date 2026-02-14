@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 os.environ.setdefault("JWT_SECRET", "test-secret-should-be-at-least-32-characters")
@@ -60,6 +62,24 @@ def test_geo_allows_when_geoip_lookup_returns_truthy():
     assert resp.json() == {"ok": True}
 
 
+@pytest.mark.parametrize("geo_result", [None, {}])
+def test_geo_blocks_when_geoip_lookup_returns_falsey(geo_result):
+    class GeoService:
+        def lookup(self, ip: str):
+            return geo_result
+
+    _setup_site_config(
+        "geo-falsey.local",
+        SiteAccessConfig(filter_mode=SiteFilterMode.GEO, ip_rules=[], geo_allowed=None),
+    )
+
+    client = TestClient(app, client=("203.0.113.11", 50000))
+    client.app.state.geoip_service = GeoService()
+    resp = client.get("/health", headers={"Host": "geo-falsey.local"})
+
+    assert resp.status_code == 403
+
+
 def test_ip_and_geo_requires_both_allow_and_geo():
     class GeoService:
         def lookup(self, ip: str):
@@ -80,3 +100,25 @@ def test_ip_and_geo_requires_both_allow_and_geo():
 
     assert resp.status_code == 200
     assert resp.json() == {"ok": True}
+
+
+@pytest.mark.parametrize("geo_result", [None, {}])
+def test_ip_and_geo_blocks_when_geoip_lookup_returns_falsey(geo_result):
+    class GeoService:
+        def lookup(self, ip: str):
+            return geo_result
+
+    _setup_site_config(
+        "ipgeo-falsey.local",
+        SiteAccessConfig(
+            filter_mode=SiteFilterMode.IP_AND_GEO,
+            ip_rules=[{"cidr": "10.2.3.5/32", "action": "allow"}],
+            geo_allowed=None,
+        ),
+    )
+
+    client = TestClient(app, client=("10.2.3.5", 50000))
+    client.app.state.geoip_service = GeoService()
+    resp = client.get("/health", headers={"Host": "ipgeo-falsey.local"})
+
+    assert resp.status_code == 403

@@ -1,0 +1,17 @@
+{
+  "servers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"],
+      "type": "stdio"
+    },
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "mcp-server-postgresql",
+        "postgresql://geo3:geo3@localhost:5433/geo3"
+      ],
+      "type": "stdio"
+    }
+  }
+}

@@ -8,7 +8,7 @@ services:
       - ../backend:/app
     command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       DATABASE_URL: postgresql+psycopg://geo3:geo3@postgres:5432/geo3
       ARTIFACT_BUCKET: artifacts
@@ -28,7 +28,7 @@ services:
       POSTGRES_USER: geo3
       POSTGRES_PASSWORD: geo3
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
   minio:
@@ -38,8 +38,8 @@ services:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9002:9000"
+      - "9003:9001"
     volumes:
       - minio_data:/data
 

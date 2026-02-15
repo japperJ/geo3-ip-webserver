@@ -10,7 +10,8 @@ Work completed:
 - Aligned User and AccessAudit models + initial migration with missing fields.
 
 Verification:
-- Task 11 attempted.
-- `alembic upgrade head` failed because alembic is not installed in the environment.
-- `docker compose -f infra/docker-compose.yml up -d` failed because port 5432 was already allocated.
-- Brought compose stack down after the failed start.
+- Task 11 completed.
+- Alembic is installed (pip show reported alembic 1.18.4).
+- `alembic upgrade head` ran with env `JWT_SECRET` and `DATABASE_URL` set for local port 5433; `alembic current` shows `0002_enable_postgis (head)`.
+- Docker compose stack is up via `docker compose -f infra/docker-compose.yml up -d`.
+- Port adjustments in `infra/docker-compose.yml` to avoid conflicts: Postgres host 5433->5432, API host 8001->8000, MinIO host 9002->9000 and 9003->9001.

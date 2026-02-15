@@ -54,6 +54,7 @@ def test_admin_sites_crud():
     resp = client.post("/api/admin/sites", json=payload, headers=headers)
     assert resp.status_code == 201
     site_id = resp.json()["id"]
+    assert isinstance(site_id, str)
 
     resp = client.get("/api/admin/sites", headers=headers)
     assert resp.status_code == 200
@@ -153,6 +154,7 @@ def test_admin_ip_rules_create_list():
     rules = resp.json()
     assert len(rules) == 1
     assert rules[0]["cidr"] == "203.0.113.0/24"
+    assert rules[0]["action"] == IPRuleAction.ALLOW.value
 
 
 def test_admin_site_users_add_remove():
@@ -169,6 +171,7 @@ def test_admin_site_users_add_remove():
         headers=headers,
     )
     assert resp.status_code == 201
+    assert resp.json()["role"] == SiteUserRole.VIEWER.value
 
     resp = client.delete(
         f"/api/admin/sites/{site_id}/users/{user_id}",

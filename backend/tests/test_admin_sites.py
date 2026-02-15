@@ -115,6 +115,25 @@ def test_admin_geofences_create_list():
     assert fences[0]["name"] == "Fence"
 
 
+def test_admin_geofences_round_trip():
+    _reset_state()
+    client = TestClient(app)
+    headers = _auth_headers(client, role="owner")
+    site_id = _create_site(client, headers)
+
+    payload = {
+        "name": "Fence",
+        "polygon": [[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]],
+    }
+    resp = client.post(
+        f"/api/admin/sites/{site_id}/geofences",
+        json=payload,
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    assert resp.json()["polygon"] == payload["polygon"]
+
+
 def test_admin_ip_rules_create_list():
     _reset_state()
     client = TestClient(app)

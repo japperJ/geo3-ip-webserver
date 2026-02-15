@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+import json
+from typing import Any, cast
+
+from geoalchemy2.elements import WKTElement
 
 
 def site_to_dict(site: Any) -> dict[str, Any]:
@@ -24,6 +27,35 @@ def geofence_to_dict(geofence: Any) -> dict[str, Any]:
         "center": geofence.center,
         "radius": geofence.radius,
     }
+
+
+def polygon_to_wkt(polygon: list[list[float]] | None) -> WKTElement | None:
+    if not polygon:
+        return None
+    if polygon[0] != polygon[-1]:
+        polygon = [*polygon, polygon[0]]
+    points = ", ".join(f"{lng} {lat}" for lng, lat in polygon)
+    return WKTElement(f"POLYGON(({points}))", srid=4326)
+
+
+def point_to_wkt(point: list[float] | None) -> WKTElement | None:
+    if not point:
+        return None
+    return WKTElement(f"POINT({point[0]} {point[1]})", srid=4326)
+
+
+def json_to_list(value: str | None) -> list[list[float]] | list[float] | None:
+    if not value:
+        return None
+    data = json.loads(value)
+    if isinstance(data, dict) and "coordinates" in data:
+        coords = data["coordinates"]
+        if isinstance(coords, list):
+            return cast(list[list[float]] | list[float], coords)
+        return None
+    if isinstance(data, list):
+        return cast(list[list[float]] | list[float], data)
+    return None
 
 
 def ip_rule_to_dict(rule: Any) -> dict[str, Any]:

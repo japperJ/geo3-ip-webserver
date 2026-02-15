@@ -75,6 +75,22 @@ def test_admin_sites_crud():
     assert resp.json() == []
 
 
+def test_admin_sites_unique_hostname_conflict():
+    _reset_state()
+    client = TestClient(app)
+    headers = _auth_headers(client, role="admin")
+
+    payload = {
+        "name": "Site A",
+        "hostname": "a.local",
+        "owner_user_id": str(uuid4()),
+    }
+    resp = client.post("/api/admin/sites", json=payload, headers=headers)
+    assert resp.status_code == 201
+    resp = client.post("/api/admin/sites", json=payload, headers=headers)
+    assert resp.status_code == 409
+
+
 def test_admin_geofences_create_list():
     _reset_state()
     client = TestClient(app)

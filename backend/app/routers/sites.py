@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from app.admin_store import get_admin_store
 from app.auth.admin_deps import require_admin
 from app.db.models.site import SiteFilterMode
 from app.db.session import get_db
+from app.admin.repositories.serialization import site_to_dict
+from app.admin.repositories.site_repository import SiteRepository
 
 router = APIRouter(prefix="/api/admin/sites", tags=["admin-sites"])
 
@@ -32,17 +34,12 @@ def create_site(
     db: Session = Depends(get_db),
     user=Depends(require_admin),
 ) -> dict:
-    store = get_admin_store(request.app)
-    site_id = store.new_id()
-    site = {
-        "id": site_id,
-        "name": payload.name,
-        "hostname": payload.hostname,
-        "owner_user_id": payload.owner_user_id,
-        "filter_mode": (payload.filter_mode or SiteFilterMode.DISABLED).value,
-    }
-    store.sites[site_id] = site
-    return site
+    repo = SiteRepository(db)
+    try:
+        site = repo.create(payload)
+    except IntegrityError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Hostname already exists")
+    return site_to_dict(site)
 
 
 @router.get("")
@@ -51,8 +48,8 @@ def list_sites(
     db: Session = Depends(get_db),
     user=Depends(require_admin),
 ) -> list[dict]:
-    store = get_admin_store(request.app)
-    return list(store.sites.values())
+    repo = SiteRepository(db)
+    return [site_to_dict(site) for site in repo.list_all()]
 
 
 @router.patch("/{site_id}")
@@ -63,17 +60,15 @@ def update_site(
     db: Session = Depends(get_db),
     user=Depends(require_admin),
 ) -> dict:
-    store = get_admin_store(request.app)
-    site = store.sites.get(site_id)
+    repo = SiteRepository(db)
+    site = repo.get(site_id)
     if site is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
-    if payload.name is not None:
-        site["name"] = payload.name
-    if payload.hostname is not None:
-        site["hostname"] = payload.hostname
-    if payload.filter_mode is not None:
-        site["filter_mode"] = payload.filter_mode.value
-    return site
+    try:
+        site = repo.update(site, payload)
+    except IntegrityError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Hostname already exists")
+    return site_to_dict(site)
 
 
 @router.delete("/{site_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -83,9 +78,9 @@ def delete_site(
     db: Session = Depends(get_db),
     user=Depends(require_admin),
 ) -> Response:
-    store = get_admin_store(request.app)
-    store.sites.pop(site_id, None)
-    store.geofences.pop(site_id, None)
-    store.ip_rules.pop(site_id, None)
-    store.site_users.pop(site_id, None)
+    repo = SiteRepository(db)
+    site = repo.get(site_id)
+    if site is None:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    repo.delete(site)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

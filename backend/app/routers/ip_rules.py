@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from app.admin_store import get_admin_store
 from app.auth.admin_deps import require_admin
 from app.db.session import get_db
 from app.db.models.ip_rule import IPRuleAction
+from app.admin.repositories.ip_rule_repository import IPRuleRepository
+from app.admin.repositories.serialization import ip_rule_to_dict
+from app.admin.repositories.site_repository import SiteRepository
 
 router = APIRouter(prefix="/api/admin/sites/{site_id}/ip-rules", tags=["admin-ip-rules"])
 
@@ -25,17 +27,12 @@ def create_ip_rule(
     db: Session = Depends(get_db),
     user=Depends(require_admin),
 ) -> dict:
-    store = get_admin_store(request.app)
-    if site_id not in store.sites:
+    site_repo = SiteRepository(db)
+    if site_repo.get(site_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
-    rule = {
-        "id": store.new_id(),
-        "site_id": site_id,
-        "cidr": payload.cidr,
-        "action": payload.action.value,
-    }
-    store.ip_rules.setdefault(site_id, []).append(rule)
-    return rule
+    repo = IPRuleRepository(db)
+    rule = repo.create(site_id, payload)
+    return ip_rule_to_dict(rule)
 
 
 @router.get("")
@@ -45,7 +42,8 @@ def list_ip_rules(
     db: Session = Depends(get_db),
     user=Depends(require_admin),
 ) -> list[dict]:
-    store = get_admin_store(request.app)
-    if site_id not in store.sites:
+    site_repo = SiteRepository(db)
+    if site_repo.get(site_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
-    return list(store.ip_rules.get(site_id, []))
+    repo = IPRuleRepository(db)
+    return [ip_rule_to_dict(rule) for rule in repo.list_for_site(site_id)]

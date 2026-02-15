@@ -177,6 +177,28 @@ def test_admin_site_users_add_remove():
     assert resp.status_code == 204
 
 
+def test_admin_site_users_no_duplicate():
+    _reset_state()
+    client = TestClient(app)
+    headers = _auth_headers(client, role="admin")
+    site_id = _create_site(client, headers)
+    user_id = str(uuid4())
+
+    payload = {"user_id": user_id, "role": SiteUserRole.VIEWER.value}
+    resp = client.post(
+        f"/api/admin/sites/{site_id}/users",
+        json=payload,
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    resp = client.post(
+        f"/api/admin/sites/{site_id}/users",
+        json=payload,
+        headers=headers,
+    )
+    assert resp.status_code in (200, 409)
+
+
 def test_admin_requires_owner_or_admin():
     _reset_state()
     client = TestClient(app)

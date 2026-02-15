@@ -153,3 +153,12 @@ def test_admin_requires_owner_or_admin():
         headers=headers,
     )
     assert resp.status_code == 403
+
+
+def test_repository_imports():
+    from app.admin.repositories.site_repository import SiteRepository
+    from app.admin.repositories.geofence_repository import GeofenceRepository
+    from app.admin.repositories.ip_rule_repository import IPRuleRepository
+    from app.admin.repositories.site_user_repository import SiteUserRepository
+
+    assert SiteRepository and GeofenceRepository and IPRuleRepository and SiteUserRepository
